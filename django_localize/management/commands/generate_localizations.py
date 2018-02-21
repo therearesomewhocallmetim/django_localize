@@ -13,40 +13,28 @@ FORMAT_BY_TAG = {
 }
 
 
-class Command(BaseCommand):
-    help = "Generate .po files from the strings.txt file"
-
-    def __init__(self):
-        super(BaseCommand, self).__init__()
+class LocalePathProcessor:
+    def __init__(self, locale_dir):
         self.all_langs = None
-        self.strings_txt = None
+        self.strings_txt = []
         self.warnings = []
-        self.locale_dir = None
+        self.locale_dir = locale_dir
 
 
-    def add_arguments(self, parser):
-        basedir = Path(settings.BASE_DIR)
-        # TODO: Replace this by getting locale folders from the django settings.
-        # self.locale_paths = settings.LOCALE_PATHS
-        self.locale_dir = (basedir / "locale").absolute()
+    def add_to_process_queue(self, filename):
+        a_path = self.locale_dir / filename
+        if not a_path.exists():
+            self.warnings.append("File not found: {}".format(a_path))
+            return
+        self.strings_txt.append(StringsTxt(a_path))
 
 
-    def path_for_lang(self, lang):
-        return path.join(self.locale_dir, lang, "LC_MESSAGES")
-
-
-    def strip_key(self, key):
-        return key.strip("[]")
-
-
-    def handle(self, *args, **kwargs):
-        strings_path = path.join(self.locale_dir, "strings.txt")
-        countries_names = path.join(self.locale_dir, "countries_names.txt")
-        self.strings_txt = [StringsTxt(strings_path), StringsTxt(countries_names)]
+    def process(self):
+        self.add_to_process_queue("strings.txt")
+        self.add_to_process_queue("countries.txt")
         self.all_langs = set()
         for st in self.strings_txt:
             self.all_langs.update(st.all_langs)
-
 
         self.create_locale_folders()
 
@@ -61,8 +49,6 @@ class Command(BaseCommand):
         for warning in self.warnings:
             print("WARNING: {}\n\n".format(warning))
 
-        call_command('compilemessages')
-
 
     def write_po_files(self):
         for lang in self.all_langs:
@@ -74,8 +60,18 @@ class Command(BaseCommand):
             outfile.write(FORMAT_BY_TAG[tag].format(text))
 
 
+    def path_for_lang(self, lang):
+        if lang == "comment":
+            return
+        return self.locale_dir / lang / "LC_MESSAGES"
+
+
+    def strip_key(self, key):
+        return key.strip("[]")
+
+
     def write_one_po_file(self, lang):
-        if not path.exists(self.path_for_lang(lang)):
+        if not self.path_for_lang(lang).exists():
             return
 
         with open(path.join(self.path_for_lang(lang), "django.po"), "w") as outfile:
@@ -106,6 +102,20 @@ headers added in the generated .po file and add them to this script.\n
 ***  FOR NOW THIS LANGUAGE ({lang}) WILL BE IGNORED  ***""".format(lang=lang)
                 )
                 # makedirs(fpath)
+
+
+class Command(BaseCommand):
+    help = "Generate .po files from the strings.txt file"
+
+    def __init__(self):
+        super(BaseCommand, self).__init__()
+        self.locale_paths = list(map(Path, settings.LOCALE_PATHS))
+
+
+    def handle(self, *args, **kwargs):
+        for locale_path in self.locale_paths:
+            LocalePathProcessor(locale_path).process()
+        call_command('compilemessages')
 
 
 class PoFileHeader:
