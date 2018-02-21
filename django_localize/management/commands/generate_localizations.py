@@ -1,7 +1,9 @@
 from os import path
+from pathlib import Path
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
+from django.conf import settings
 
 from .deps.strings_txt import StringsTxt
 
@@ -23,10 +25,10 @@ class Command(BaseCommand):
 
 
     def add_arguments(self, parser):
-        my_path = path.realpath(__file__)
-        self.locale_dir = path.abspath(
-            path.join(path.dirname(my_path), "..", "..", "locale")
-        )
+        basedir = Path(settings.BASE_DIR)
+        # TODO: Replace this by getting locale folders from the django settings.
+        # self.locale_paths = settings.LOCALE_PATHS
+        self.locale_dir = (basedir / "locale").absolute()
 
 
     def path_for_lang(self, lang):
