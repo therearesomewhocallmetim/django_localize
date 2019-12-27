@@ -2,8 +2,8 @@
 django_localize
 =============================
 
-.. image:: https://badge.fury.io/py/django_localize.svg
-    :target: https://badge.fury.io/py/django_localize
+.. image:: https://badge.fury.io/py/django_localizer.svg
+    :target: https://badge.fury.io/py/django_localizer
 
 .. image:: https://travis-ci.org/therearesomewhocallmetim/django_localize.svg?branch=master
     :target: https://travis-ci.org/therearesomewhocallmetim/django_localize
