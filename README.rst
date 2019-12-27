@@ -25,28 +25,26 @@ Install django_localize::
 
     pip install django_localize
 
+Looks like for now it is better to install it from github.
+
 Add it to your `INSTALLED_APPS`:
 
 .. code-block:: python
 
     INSTALLED_APPS = (
         ...
-        'django_localize.apps.DjangoLocalizeConfig',
+        'django_localize',
         ...
     )
 
-Add django_localize's URL patterns:
 
-.. code-block:: python
+To generate localizations, create `strings.txt` files and then run
+.. code-block:: bash
+    ./manage.py django-localize
 
-    from django_localize import urls as django_localize_urls
-
-
-    urlpatterns = [
-        ...
-        url(r'^', include(django_localize_urls)),
-        ...
-    ]
+It's best to keep your virtual environment outside of the project directory as
+the command will process **all** .po files, including those in the virtialenv
+directory.
 
 Features
 --------

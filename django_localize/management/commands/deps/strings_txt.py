@@ -13,8 +13,6 @@ PLACEHOLDERS = re.compile(r"(%\(\d*\w+\)[ds])")
 
 LANG_ORDER = ["en", "en-GB", "ru"]
 
-SIMILARITY_THRESHOLD = 20.0 #%
-
 
 class StringsTxt:
 

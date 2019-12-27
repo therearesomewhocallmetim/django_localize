@@ -1,0 +1,6 @@
+[[test strings txt]]
+
+[string_one]
+en = String one
+ru = String one ru
+de = String one de

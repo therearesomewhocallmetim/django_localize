@@ -6,5 +6,5 @@ from django.conf.urls import url, include
 from django_localize.urls import urlpatterns as django_localize_urls
 
 urlpatterns = [
-    url(r'^', include(django_localize_urls, namespace='django_localize')),
+    url(r'^', include(django_localize_urls)), #, namespace='django_localize')),
 ]
