@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 
 class DjangoLocalizeConfig(AppConfig):
-    name = 'django_localize'
+    name = 'django_localizer'
