@@ -4,6 +4,7 @@ from __future__ import print_function
 from collections import namedtuple, defaultdict
 import re
 
+
 TransAndKey = namedtuple("TransAndKey", "translation, key")
 
 TRANSLATION = re.compile(r"(.*)\s*=\s*.*$", re.S | re.MULTILINE)
@@ -14,8 +15,52 @@ PLACEHOLDERS = re.compile(r"(%\(\d*\w+\)[ds])")
 LANG_ORDER = ["en", "en-GB", "ru"]
 
 
-class StringsTxt:
+class line_reader:
+    def __init__(self, file_path):
+        self.file_path = file_path
 
+    def __enter__(self):
+        self.strings_txt = open(self.file_path)
+        return self._lines()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.strings_txt.close()
+
+    def _lines(self):
+        for string in self.strings_txt:
+            string = string.strip()
+            if not string:
+                continue
+
+            yield Line(string)
+
+
+class Line(str):
+    def is_section(self):
+        return self.startswith('[[')
+
+
+    def is_key(self):
+        return self.startswith('[')
+
+
+    def is_translation(self):
+        return TRANSLATION.match(self)
+
+
+    def lang_and_translation(self):
+        lang, _, tran = self.partition('=')
+        tran = self._process_translation(tran)
+        return lang, tran
+
+
+    def _process_translation(self, translation):
+        if MANY_DOTS.search(translation):
+            print(f'WARNING: 4 or more dots in the string: {self}')
+        return translation.strip().replace("...", "…")
+
+
+class StringsTxt:
     def __init__(self, strings_path):
         self.strings_path = strings_path
         self.translations = defaultdict(lambda: defaultdict(str)) # dict<key, dict<lang, translation>>
@@ -30,45 +75,30 @@ class StringsTxt:
 
 
     def _read_file(self):
-        with open(self.strings_path) as strings:
-            for line in strings:
-                line = line.strip()
-                if not line:
-                    continue
-                if line.startswith("[["):
+        key = None
+        with line_reader(self.strings_path) as lines:
+            for line in lines:
+                if line.is_section():
                     self.keys_in_order.append(line)
                     continue
-                if line.startswith("["):
-                    # if line in self.translations:
-                    #     print("Duplicate key {}".format(line))
-                    #     continue
-                    self.translations[line] = {}
-                    current_key = line
-                    if current_key not in self.keys_in_order:
-                        self.keys_in_order.append(current_key)
+                if line.is_key():
+                    key = line
+                    self._add_new_key(key)
                     continue
-
-                if TRANSLATION.match(line):
-                    lang, tran = self._parse_lang_and_translation(line)
-
-                    if lang == "comment" or lang == "tags":
-                        self.comments_and_tags[current_key][lang] = tran
+                if line.is_translation():
+                    lang, tran = line.lang_and_translation()
+                    if lang == 'comment' or lang == 'tags':
+                        self.comments_and_tags[key][lang] = tran
                         continue
 
-                    self.translations[current_key][lang] = tran
+                    self.translations[key][lang] = tran
                     self.all_langs.add(lang)
 
 
-    def _parse_lang_and_translation(self, line):
-        ret = tuple(map(self._process_string, line.split(" = ", 1)))
-        assert len(ret) == 2, "Couldn't parse the line: {0}".format(line)
-        return ret
-
-
-    def _process_string(self, string):
-        if MANY_DOTS.search(string):
-            print("WARNING: 4 or more dots in the string: {0}".format(string))
-        return str.strip(string).replace("...", "…")
+    def _add_new_key(self, key):
+        self.translations[key] = {}
+        if key not in self.keys_in_order:
+            self.keys_in_order.append(key)
 
 
     def _populate_translations_by_langs(self):
@@ -82,30 +112,30 @@ class StringsTxt:
 
 
     def write_formatted(self, target_file=None, languages=None):
-        before_block = ""
+        before_block = ''
         if target_file is None:
             target_file = self.strings_path
-        non_itunes_langs = sorted(list(self.all_langs - set(LANG_ORDER)))
-        with open(target_file, "w") as outfile:
+        alphabetical_langs = sorted(list(self.all_langs - set(LANG_ORDER)))
+        with open(target_file, 'w') as outfile:
             for key in self.keys_in_order:
                 if not key:
                     continue
                 if key in self.translations:
                     tran = self.translations[key]
                 else:
-                    if key.startswith("[["):
-                        outfile.write("{0}{1}\n".format(before_block, key))
-                        before_block = "\n"
+                    if key.startswith('[['):
+                        outfile.write(f'{before_block}{key}\n')
+                        before_block = '\n'
                     continue
 
-                outfile.write("{0}  {1}\n".format(before_block, key))
-                before_block = "\n"
+                outfile.write(f'{before_block}  {key}\n')
+                before_block = '\n'
 
                 if key in self.comments_and_tags:
                     for k, v in self.comments_and_tags[key].items():
-                        outfile.write("    {0} = {1}\n".format(k, v))
+                        outfile.write(f'    {k} = {v}\n')
                 self._write_translations_for_langs(LANG_ORDER, tran, outfile, only_langs=languages)
-                self._write_translations_for_langs(non_itunes_langs, tran, outfile, only_langs=languages)
+                self._write_translations_for_langs(alphabetical_langs, tran, outfile, only_langs=languages)
 
 
     def _write_translations_for_langs(self, langs, tran, outfile, only_langs=None):
@@ -120,7 +150,7 @@ class StringsTxt:
 
         for lang in langs_to_write:
             if lang in tran:
-                outfile.write("    {0} = {1}\n".format(lang, tran[lang]))
+                outfile.write(f'    {lang} = {tran[lang]}\n')
 
 
     def _has_space_before_punctuation(self, lang_and_string):
