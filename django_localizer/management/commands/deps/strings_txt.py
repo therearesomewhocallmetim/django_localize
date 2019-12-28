@@ -3,7 +3,8 @@
 from __future__ import print_function
 from collections import namedtuple, defaultdict
 import re
-
+from pathlib import Path
+from typing import Tuple, Dict, Set, List
 
 TransAndKey = namedtuple("TransAndKey", "translation, key")
 
@@ -36,19 +37,19 @@ class line_reader:
 
 
 class Line(str):
-    def is_section(self):
+    def is_section(self) -> bool:
         return self.startswith('[[')
 
 
-    def is_key(self):
+    def is_key(self) -> bool:
         return self.startswith('[')
 
 
-    def is_translation(self):
-        return TRANSLATION.match(self)
+    def is_translation(self) -> bool:
+        return bool(TRANSLATION.match(self))
 
 
-    def lang_and_translation(self):
+    def lang_and_translation(self) -> Tuple[str, str]:
         lang, _, tran = self.partition('=')
         tran = self._process_translation(tran)
         return lang, tran
@@ -59,15 +60,20 @@ class Line(str):
             print(f'WARNING: 4 or more dots in the string: {self}')
         return translation.strip().replace("...", "…")
 
+Key = str
+Lang = str
+Translation = str
 
 class StringsTxt:
     def __init__(self, strings_path):
-        self.strings_path = strings_path
-        self.translations = defaultdict(lambda: defaultdict(str)) # dict<key, dict<lang, translation>>
-        self.translations_by_language = defaultdict(dict) # dict<lang, dict<key, translation>>
+        self.strings_path: Path = strings_path
+        self.translations: Dict[Key, Dict[Lang, Translation]] = (
+            defaultdict(lambda: defaultdict(str)))
+        self.translations_by_language: Dict[Lang, Dict[Key, Translation]] = (
+            defaultdict(dict))
         self.comments_and_tags = defaultdict(dict)
-        self.all_langs = set()
-        self.keys_in_order = []
+        self.all_langs: Set[str] = set()
+        self.keys_in_order: List[Key] = []
         self.warnings = []
 
         self._read_file()

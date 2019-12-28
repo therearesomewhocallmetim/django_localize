@@ -2,5 +2,5 @@
 
 [string_one]
 en = String one
-ru = String one ru
+ru = %s машина стол
 de = String one de
