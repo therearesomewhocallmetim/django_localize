@@ -5,7 +5,7 @@ from __future__ import print_function
 import re
 from collections import namedtuple, defaultdict
 from pathlib import Path
-from typing import Tuple, Dict, Set, List, NewType
+from typing import Tuple, Dict, Set, List, NewType, Generic, TypeVar, Type
 
 TransAndKey = namedtuple("TransAndKey", "translation, key")
 
@@ -23,57 +23,40 @@ Lang = NewType('Lang', str)
 Translation = NewType('Translation', str)
 PLIndex = NewType('PLIndex', int)
 
-
-class Forms:
-    def __init__(self):
-        self.dct: Dict[PLIndex, Translation] = {}
-
-    def __getitem__(self, item: PLIndex) -> Translation:
-        return self.dct[item]
-
-    def __setitem__(self, key: PLIndex, value: Translation) -> None:
-        self.dct[key] = value
-
-    def __len__(self):
-        return len(self.dct)
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
 
-class Translations:
-    def __init__(self):
-        self.dct: Dict[Lang, Forms] = {}
+class GenStorage(Generic[KT, VT]):
+    def __init__(self, value_class: Type[VT]):
+        self.dct: Dict[KT, VT] = {}
+        self.value_class = value_class
 
-    def __getitem__(self, item: Lang) -> Forms:
+    def __getitem__(self, item: KT) -> VT:
         if item not in self.dct:
-            self.dct[item] = Forms()
+            self.dct[item] = self.value_class()
         return self.dct[item]
 
-    def __setitem__(self, key: Lang, value: Forms) -> None:
-        self.dct[key] = value
-
-    def items(self):
-        return self.dct.items()
-
-    def __len__(self):
-        return len(self.dct)
-
-
-class Terms:
-    def __init__(self):
-        self.dct: Dict[Key, Translations] = {}
-
-    def __getitem__(self, item: Key) -> Translations:
-        if item not in self.dct:
-            self.dct[item] = Translations()
-        return self.dct[item]
-
-    def __setitem__(self, key: Key, value: Translations) -> None:
+    def __setitem__(self, key: KT, value: VT):
         self.dct[key] = value
 
     def __len__(self):
         return len(self.dct)
 
-    def items(self):
-        return self.dct.items()
+
+class Forms(GenStorage[PLIndex, Translation]):
+    def __init__(self, value_class=Translation):
+        super().__init__(value_class)
+
+
+class Translations(GenStorage[Lang, Forms]):
+    def __init__(self, value_class=Forms):
+        super().__init__(value_class)
+
+
+class Terms(GenStorage[Key, Translations]):
+    def __init__(self, value_class=Translations):
+        super().__init__(value_class)
 
 
 class line_reader:
