@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 from __future__ import print_function
-from collections import namedtuple, defaultdict
+
 import re
+from collections import namedtuple, defaultdict
 from pathlib import Path
-from typing import Tuple, Dict, Set, List
+from typing import Tuple, Dict, Set, List, NewType
 
 TransAndKey = namedtuple("TransAndKey", "translation, key")
 
@@ -12,8 +13,67 @@ TRANSLATION = re.compile(r"(.*)\s*=\s*.*$", re.S | re.MULTILINE)
 MANY_DOTS = re.compile(r"\.{4,}")
 SPACE_PUNCTUATION = re.compile(r"\s[.,?!:;]")
 PLACEHOLDERS = re.compile(r"(%\(\d*\w+\)[ds])")
+LANG_AND_INDEX = re.compile('([-_a-zA-Z]+)(\[\d+])?')
 
 LANG_ORDER = ["en", "en-GB", "ru"]
+
+
+Key = NewType('Key', str)
+Lang = NewType('Lang', str)
+Translation = NewType('Translation', str)
+PLIndex = NewType('PLIndex', int)
+
+
+class Forms:
+    def __init__(self):
+        self.dct: Dict[PLIndex, Translation] = {}
+
+    def __getitem__(self, item: PLIndex) -> Translation:
+        return self.dct[item]
+
+    def __setitem__(self, key: PLIndex, value: Translation) -> None:
+        self.dct[key] = value
+
+    def __len__(self):
+        return len(self.dct)
+
+
+class Translations:
+    def __init__(self):
+        self.dct: Dict[Lang, Forms] = {}
+
+    def __getitem__(self, item: Lang) -> Forms:
+        if item not in self.dct:
+            self.dct[item] = Forms()
+        return self.dct[item]
+
+    def __setitem__(self, key: Lang, value: Forms) -> None:
+        self.dct[key] = value
+
+    def items(self):
+        return self.dct.items()
+
+    def __len__(self):
+        return len(self.dct)
+
+
+class Terms:
+    def __init__(self):
+        self.dct: Dict[Key, Translations] = {}
+
+    def __getitem__(self, item: Key) -> Translations:
+        if item not in self.dct:
+            self.dct[item] = Translations()
+        return self.dct[item]
+
+    def __setitem__(self, key: Key, value: Translations) -> None:
+        self.dct[key] = value
+
+    def __len__(self):
+        return len(self.dct)
+
+    def items(self):
+        return self.dct.items()
 
 
 class line_reader:
@@ -49,26 +109,30 @@ class Line(str):
         return bool(TRANSLATION.match(self))
 
 
-    def lang_and_translation(self) -> Tuple[str, str]:
+    def parse_translation(self) -> Tuple[Lang, Translation, PLIndex]:
         lang, _, tran = self.partition('=')
+        lang, index = self._process_lang(lang)
         tran = self._process_translation(tran)
-        return lang, tran
+        return lang, tran, index
 
 
-    def _process_translation(self, translation):
+    def _process_translation(self, translation) -> Translation:
         if MANY_DOTS.search(translation):
             print(f'WARNING: 4 or more dots in the string: {self}')
-        return translation.strip().replace("...", "…")
+        return Translation(translation.strip().replace("...", "…"))
 
-Key = str
-Lang = str
-Translation = str
+
+    def _process_lang(self, lang) -> Tuple[Lang, PLIndex]:
+        lang, index = LANG_AND_INDEX.findall(lang)[0]
+        if not index:
+            index = 0
+        return Lang(lang), PLIndex(index)
+
 
 class StringsTxt:
     def __init__(self, strings_path):
         self.strings_path: Path = strings_path
-        self.translations: Dict[Key, Dict[Lang, Translation]] = (
-            defaultdict(lambda: defaultdict(str)))
+        self.terms: Terms = Terms()
         self.translations_by_language: Dict[Lang, Dict[Key, Translation]] = (
             defaultdict(dict))
         self.comments_and_tags = defaultdict(dict)
@@ -77,7 +141,7 @@ class StringsTxt:
         self.warnings = []
 
         self._read_file()
-        self._populate_translations_by_langs()
+        # self._populate_translations_by_langs()
 
 
     def _read_file(self):
@@ -88,21 +152,20 @@ class StringsTxt:
                     self.keys_in_order.append(line)
                     continue
                 if line.is_key():
-                    key = line
+                    key = Key(line)
                     self._add_new_key(key)
                     continue
                 if line.is_translation():
-                    lang, tran = line.lang_and_translation()
+                    lang, tran, plural_index = line.parse_translation()
                     if lang == 'comment' or lang == 'tags':
                         self.comments_and_tags[key][lang] = tran
                         continue
 
-                    self.translations[key][lang] = tran
+                    self.terms[key][lang][plural_index] = tran
                     self.all_langs.add(lang)
 
 
     def _add_new_key(self, key):
-        self.translations[key] = {}
         if key not in self.keys_in_order:
             self.keys_in_order.append(key)
 
@@ -110,7 +173,7 @@ class StringsTxt:
     def _populate_translations_by_langs(self):
         for lang in self.all_langs:
             trans_for_lang = {}
-            for key, tran in self.translations.items(): # (tran = dict<lang, translation>)
+            for key, tran in self.terms.items(): # (tran = dict<lang, translation>)
                 if lang not in tran:
                     continue
                 trans_for_lang[key] = tran[lang]
@@ -126,8 +189,8 @@ class StringsTxt:
             for key in self.keys_in_order:
                 if not key:
                     continue
-                if key in self.translations:
-                    tran = self.translations[key]
+                if key in self.terms:
+                    tran = self.terms[key]
                 else:
                     if key.startswith('[['):
                         outfile.write(f'{before_block}{key}\n')
@@ -140,8 +203,10 @@ class StringsTxt:
                 if key in self.comments_and_tags:
                     for k, v in self.comments_and_tags[key].items():
                         outfile.write(f'    {k} = {v}\n')
-                self._write_translations_for_langs(LANG_ORDER, tran, outfile, only_langs=languages)
-                self._write_translations_for_langs(alphabetical_langs, tran, outfile, only_langs=languages)
+                self._write_translations_for_langs(
+                    LANG_ORDER, tran, outfile, only_langs=languages)
+                self._write_translations_for_langs(
+                    alphabetical_langs, tran, outfile, only_langs=languages)
 
 
     def _write_translations_for_langs(self, langs, tran, outfile, only_langs=None):
@@ -171,7 +236,7 @@ class StringsTxt:
     def find_spaces_before_punctuation(self):
         loc_warnings = []
 
-        for key, lang_and_trans in self.translations.items():
+        for key, lang_and_trans in self.terms.items():
             with_spaces = list(filter(
                 self._has_space_before_punctuation, lang_and_trans.items()))
 
@@ -191,7 +256,7 @@ class StringsTxt:
     def _check_placeholders_in_block(self, block_key):
         wrong_placeholders_strings = []
         key_placeholders = sorted(PLACEHOLDERS.findall(block_key))
-        for lang, translation in self.translations[block_key].items():
+        for lang, translation in self.terms[block_key].items():
             found = sorted(PLACEHOLDERS.findall(translation))
             if not key_placeholders == found: # must be sorted
                 wrong_placeholders_strings.append("{} : {}".format(lang, translation))
@@ -202,15 +267,12 @@ class StringsTxt:
     def find_wrong_paceholders(self):
         warnings = []
 
-        for key, lang_and_trans in self.translations.items():
+        for key, lang_and_trans in self.terms.items():
             for wr_placeholders in self._check_placeholders_in_block(key):
                 warnings.append("{}\nEn: {}\n{}".format(
-                    key, lang_and_trans["en"], wr_placeholders
-                ))
+                    key, lang_and_trans["en"], wr_placeholders))
 
         if warnings:
             self.warnings.append(
                 "These strings have wrong numbers of placeholders in them:\n{}".format(
-                    "\n".join(warnings)
-                )
-            )
+                    "\n".join(warnings)))

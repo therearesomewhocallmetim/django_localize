@@ -8,7 +8,6 @@ class TestOne(TestCase):
     def test_one(self):
         strings_path = Path('tests/strings.txt')
         strings_txt = StringsTxt(strings_path)
-        self.assertEqual(len(strings_txt.translations), 1)
-        self.assertEqual(len(strings_txt.translations_by_language), 3)
-
-        print("Hello")
+        self.assertEqual(len(strings_txt.terms), 1)
+        self.assertEqual(len(strings_txt.terms['[string_one]']), 3)
+        self.assertEqual(len(strings_txt.terms['[string_one]']['ru']), 4)
