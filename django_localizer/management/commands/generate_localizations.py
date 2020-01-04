@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.conf import settings
 
-from .deps.strings_txt import StringsTxt
+from stew.stew import Stew
 
 FORMAT_BY_TAG = {
     "comment": "# {}\n",
@@ -19,6 +19,7 @@ class LocalePathProcessor:
         self.strings_txt = []
         self.warnings = []
         self.locale_dir = locale_dir
+        self.add_to_process_queue("strings.stew")
 
 
     def add_to_process_queue(self, filename):
@@ -26,12 +27,10 @@ class LocalePathProcessor:
         if not a_path.exists():
             self.warnings.append("File not found: {}".format(a_path))
             return
-        self.strings_txt.append(StringsTxt(a_path))
+        self.strings_txt.append(Stew(a_path))
 
 
     def process(self):
-        self.add_to_process_queue("strings.txt")
-        self.add_to_process_queue("countries.txt")
         self.all_langs = set()
         for st in self.strings_txt:
             self.all_langs.update(st.all_langs)
@@ -39,15 +38,15 @@ class LocalePathProcessor:
         self.create_locale_folders()
 
         self.write_po_files()
-        for strings_txt in self.strings_txt:
-            strings_txt.write_formatted()
-            strings_txt.find_spaces_before_punctuation()
-            strings_txt.find_wrong_paceholders()
-
-            self.warnings.extend(strings_txt.warnings)
-
-        for warning in self.warnings:
-            print("WARNING: {}\n\n".format(warning))
+        # for strings_txt in self.strings_txt:
+        #     strings_txt.write_formatted()
+        #     strings_txt.find_spaces_before_punctuation()
+        #     strings_txt.find_wrong_paceholders()
+        #
+        #     self.warnings.extend(strings_txt.warnings)
+        #
+        # for warning in self.warnings:
+        #     print("WARNING: {}\n\n".format(warning))
 
 
     def write_po_files(self):
@@ -70,22 +69,41 @@ class LocalePathProcessor:
         return key.strip("[]")
 
 
+    def generate_po_file(self, lang):
+        # Add the lang-specific header
+        for stew_file in self.strings_txt:
+            for term, translations in stew_file.terms.items():
+                forms = translations.dct.get(lang)
+                if not forms:
+                    continue
+
+                yield f'msgid "{self.strip_key(term)}"\n'
+                if len(forms) == 1:
+                    yield f'msgstr "{forms[0]}"\n'
+                else:
+                    for i, form in forms.items():
+                        yield f'msgstr[{i}] "{form}"\n'
+                yield '\n'
+
+
     def write_one_po_file(self, lang):
         if not self.path_for_lang(lang).exists():
             return
 
         with open(path.join(self.path_for_lang(lang), "django.po"), "w") as outfile:
             outfile.write(PoFileHeader.get_header_for_lang(lang))
-            for str_txt in self.strings_txt:
-                translations = str_txt.translations_by_language[lang]
-                for key in str_txt.keys_in_order:
-                    if key.startswith("[["):
-                        outfile.write('####\n# {}\n####\n\n'.format(self.strip_key(key)))
-                        continue
-                    self.write_comment_and_tag(str_txt, key, outfile)
-                    if key in translations:
-                        outfile.write("msgid \"{}\"\n".format(self.strip_key(key).replace('"', r'\"')))
-                        outfile.write("msgstr \"{}\"\n\n".format(translations[key].replace('"', r'\"')))
+            for string in self.generate_po_file(lang):
+                outfile.write(string)
+            # for str_txt in self.strings_txt:
+            #     translations = str_txt.translations_by_language[lang]
+            #     for key in str_txt.keys_in_order:
+            #         if key.startswith("[["):
+            #             outfile.write('####\n# {}\n####\n\n'.format(self.strip_key(key)))
+            #             continue
+            #         self.write_comment_and_tag(str_txt, key, outfile)
+            #         if key in translations:
+            #             outfile.write("msgid \"{}\"\n".format(self.strip_key(key).replace('"', r'\"')))
+            #             outfile.write("msgstr \"{}\"\n\n".format(translations[key].replace('"', r'\"')))
 
 
     def create_locale_folders(self):
