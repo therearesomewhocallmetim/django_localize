@@ -11,16 +11,16 @@ def _get_n(*args, **kwargs):
     return None
 
 
-def _get_str(txt, n):
+def _get_str(key, n):
     if n is None:
-        return gettext(txt)
-    s = gettext(txt)
-    if s == txt:
-        return ngettext(txt, txt, n)
+        return gettext(key)
+    s = gettext(key)
+    if s == key:
+        return ngettext(key, key, n)
     return s
 
 
-def translate(txt, *args, **kwargs):
+def translate(key, *args, **kwargs):
     n = _get_n(*args, **kwargs)
-    s = _get_str(txt, n)
+    s = _get_str(key, n)
     return s.format(*args, **kwargs)

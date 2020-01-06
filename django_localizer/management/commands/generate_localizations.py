@@ -81,6 +81,7 @@ class LocalePathProcessor:
                 if len(forms) == 1:
                     yield f'msgstr "{forms[0]}"\n'
                 else:
+                    yield f'msgid_plural "{self.strip_key(term)}"\n'
                     for i, form in forms.items():
                         yield f'msgstr[{i}] "{form}"\n'
                 yield '\n'
