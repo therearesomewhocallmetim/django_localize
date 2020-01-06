@@ -35,12 +35,12 @@ Add it to your `INSTALLED_APPS`:
 
     INSTALLED_APPS = (
         ...
-        'django_localize',
+        'django_localizer',
         ...
     )
 
 
-To generate localizations, create `strings.txt` files and then run
+To generate localizations, create a `strings.stew` file and then run
 
 .. code-block:: bash
 
@@ -63,7 +63,7 @@ applications. All the \*.stew files will be picked up and transformed into \*.po
 files. Then those will be transformed into \*.mo files used by django.
 
 Please, note that you should not modify the \*.po files manually as the changes
-will be overwritten by when you generate localizations the next time. That is
+will be overwritten when you generate localizations the next time. That is
 a common approach for all generated files.
 
 For the file format, please, refer to the documentation of the `stew` library.

@@ -166,7 +166,7 @@ description = "A library for parsing localization string files"
 name = "stew"
 optional = false
 python-versions = ">=3.6,<4.0"
-version = "0.1.3"
+version = "0.1.4"
 
 [[package]]
 category = "dev"
@@ -324,8 +324,8 @@ sqlparse = [
     {file = "sqlparse-0.3.0.tar.gz", hash = "sha256:7c3dca29c022744e95b547e867cee89f4fce4373f3549ccd8797d8eb52cdb873"},
 ]
 stew = [
-    {file = "stew-0.1.3-py3-none-any.whl", hash = "sha256:3451ab9213d7aefb6b018cb0199cd8bef31453787519a3bc1675a584a1a1cdec"},
-    {file = "stew-0.1.3.tar.gz", hash = "sha256:adc5ca8e42f7680b373efd0efb5b6129372a25f5ff3e0abf4e82af9e5360e185"},
+    {file = "stew-0.1.4-py3-none-any.whl", hash = "sha256:24032a0f5bc6603c271d1314b92cb5409580d15a8176d7b8dd97b0c120f2a10d"},
+    {file = "stew-0.1.4.tar.gz", hash = "sha256:ea8301b097735979c0f9c15434e9c9be6681bad6508eac147ef7e36ed14e6af4"},
 ]
 toml = [
     {file = "toml-0.10.0-py2.7.egg", hash = "sha256:f1db651f9657708513243e61e6cc67d101a39bad662eaa9b5546f789338e07a3"},

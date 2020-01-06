@@ -1,6 +1,7 @@
 from os import path
 from pathlib import Path
 
+from django.apps import apps
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -19,7 +20,10 @@ class LocalePathProcessor:
         self.strings_txt = []
         self.warnings = []
         self.locale_dir = locale_dir
-        self.add_to_process_queue("strings.stew")
+        stew_files = self.locale_dir.glob('**/*.stew')
+        for stew_file in stew_files:
+            if stew_file.is_file():
+                self.add_to_process_queue(stew_file)
 
 
     def add_to_process_queue(self, filename):
@@ -38,15 +42,15 @@ class LocalePathProcessor:
         self.create_locale_folders()
 
         self.write_po_files()
-        # for strings_txt in self.strings_txt:
-        #     strings_txt.write_formatted()
+        for strings_txt in self.strings_txt:
+            strings_txt.write_formatted()
         #     strings_txt.find_spaces_before_punctuation()
         #     strings_txt.find_wrong_paceholders()
         #
         #     self.warnings.extend(strings_txt.warnings)
         #
-        # for warning in self.warnings:
-        #     print("WARNING: {}\n\n".format(warning))
+        for warning in self.warnings:
+            print("WARNING: {}\n\n".format(warning))
 
 
     def write_po_files(self):
@@ -66,23 +70,30 @@ class LocalePathProcessor:
 
 
     def strip_key(self, key):
-        return key.strip("[]")
+        return key.strip('[]').replace('"', '\\"')
 
 
     def generate_po_file(self, lang):
         # Add the lang-specific header
         for stew_file in self.strings_txt:
-            for term, translations in stew_file.terms.items():
+            yield f'\n### from {stew_file.strings_path.relative_to(settings.BASE_DIR)}\n\n'
+            for key in stew_file.keys_in_order:
+                translations = stew_file.terms.dct.get(key)
+                if not translations:
+                    yield f'# {key}\n'
+                    continue
+
                 forms = translations.dct.get(lang)
                 if not forms:
                     continue
 
-                yield f'msgid "{self.strip_key(term)}"\n'
+                yield f'msgid "{self.strip_key(key)}"\n'
                 if len(forms) == 1:
                     yield f'msgstr "{forms[0]}"\n'
                 else:
-                    yield f'msgid_plural "{self.strip_key(term)}"\n'
+                    yield f'msgid_plural "{self.strip_key(key)}"\n'
                     for i, form in forms.items():
+                        form = form.replace('"', '\\"')
                         yield f'msgstr[{i}] "{form}"\n'
                 yield '\n'
 
@@ -95,16 +106,6 @@ class LocalePathProcessor:
             outfile.write(PoFileHeader.get_header_for_lang(lang))
             for string in self.generate_po_file(lang):
                 outfile.write(string)
-            # for str_txt in self.strings_txt:
-            #     translations = str_txt.translations_by_language[lang]
-            #     for key in str_txt.keys_in_order:
-            #         if key.startswith("[["):
-            #             outfile.write('####\n# {}\n####\n\n'.format(self.strip_key(key)))
-            #             continue
-            #         self.write_comment_and_tag(str_txt, key, outfile)
-            #         if key in translations:
-            #             outfile.write("msgid \"{}\"\n".format(self.strip_key(key).replace('"', r'\"')))
-            #             outfile.write("msgstr \"{}\"\n\n".format(translations[key].replace('"', r'\"')))
 
 
     def create_locale_folders(self):
@@ -112,14 +113,16 @@ class LocalePathProcessor:
         for fpath, lang in zip(paths, self.all_langs):
             if not path.exists(fpath):
                 self.warnings.append(
-"""No localization directory exists for language: {lang}. Please, run
+f"""No localization directory exists for language: {lang}. Looking in:
+{fpath} 
+
+Please, run
 
         python manage.py makemessages -l {lang}
 
 to create the corresponding folder structure. Please check if there are any special
 headers added in the generated .po file and add them to this script.\n
-***  FOR NOW THIS LANGUAGE ({lang}) WILL BE IGNORED  ***""".format(lang=lang)
-                )
+***  FOR NOW THIS LANGUAGE ({lang}) WILL BE IGNORED  ***""")
                 # makedirs(fpath)
 
 
@@ -129,6 +132,14 @@ class Command(BaseCommand):
     def __init__(self):
         super(BaseCommand, self).__init__()
         self.locale_paths = list(map(Path, settings.LOCALE_PATHS))
+        app_configs = apps.get_app_configs()
+        base_dir = Path(settings.BASE_DIR)
+
+        for app_config in app_configs:
+            app_path = Path(app_config.path)
+            locale_dir = app_path / 'locale'
+            if app_path.parent == base_dir and locale_dir.exists:
+                self.locale_paths.append(locale_dir)
 
 
     def handle(self, *args, **kwargs):
