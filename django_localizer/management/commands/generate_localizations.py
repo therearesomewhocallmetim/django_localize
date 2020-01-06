@@ -9,8 +9,8 @@ from django.conf import settings
 from stew.stew import Stew
 
 FORMAT_BY_TAG = {
-    "comment": "# {}\n",
-    "tags": "# tags: {}\n",
+    'comment': '# {}\n',
+    'tags': '# tags: {}\n',
 }
 
 
@@ -29,7 +29,7 @@ class LocalePathProcessor:
     def add_to_process_queue(self, filename):
         a_path = self.locale_dir / filename
         if not a_path.exists():
-            self.warnings.append("File not found: {}".format(a_path))
+            self.warnings.append(f'File not found: {a_path}')
             return
         self.strings_txt.append(Stew(a_path))
 
@@ -50,7 +50,7 @@ class LocalePathProcessor:
         #     self.warnings.extend(strings_txt.warnings)
         #
         for warning in self.warnings:
-            print("WARNING: {}\n\n".format(warning))
+            print(f'WARNING: {warning}\n\n')
 
 
     def write_po_files(self):
@@ -58,15 +58,15 @@ class LocalePathProcessor:
             self.write_one_po_file(lang)
 
 
-    def write_comment_and_tag(self, str_txt, key, outfile):
+    def write_comment_and_tag(self, str_txt, key):
         for tag, text in str_txt.comments_and_tags.get(key, {}).items():
-            outfile.write(FORMAT_BY_TAG[tag].format(text))
+            yield FORMAT_BY_TAG[tag].format(text)
 
 
     def path_for_lang(self, lang):
-        if lang == "comment":
+        if lang == 'comment':
             return
-        return self.locale_dir / lang / "LC_MESSAGES"
+        return self.locale_dir / lang / 'LC_MESSAGES'
 
 
     def strip_key(self, key):
@@ -74,14 +74,15 @@ class LocalePathProcessor:
 
 
     def generate_po_file(self, lang):
-        # Add the lang-specific header
         for stew_file in self.strings_txt:
             yield f'\n### from {stew_file.strings_path.relative_to(settings.BASE_DIR)}\n\n'
             for key in stew_file.keys_in_order:
                 translations = stew_file.terms.dct.get(key)
-                if not translations:
+                if key not in stew_file.terms.dct:
                     yield f'# {key}\n'
                     continue
+
+                yield from self.write_comment_and_tag(stew_file, key)
 
                 forms = translations.dct.get(lang)
                 if not forms:
@@ -102,7 +103,7 @@ class LocalePathProcessor:
         if not self.path_for_lang(lang).exists():
             return
 
-        with open(path.join(self.path_for_lang(lang), "django.po"), "w") as outfile:
+        with open(self.path_for_lang(lang) / 'django.po', 'w') as outfile:
             outfile.write(PoFileHeader.get_header_for_lang(lang))
             for string in self.generate_po_file(lang):
                 outfile.write(string)
@@ -127,7 +128,7 @@ headers added in the generated .po file and add them to this script.\n
 
 
 class Command(BaseCommand):
-    help = "Generate .po files from the strings.txt file"
+    help = 'Generate .po and .mo files from .stew files'
 
     def __init__(self):
         super(BaseCommand, self).__init__()
