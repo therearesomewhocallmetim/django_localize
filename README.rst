@@ -25,11 +25,11 @@ Install django_localizer::
 
     pip install django_localizer
 
-Alternatively, add it using `poetry`::
+Alternatively, add it using ``poetry``::
 
     poetry add django_localizer
 
-Add it to your `INSTALLED_APPS`:
+Add it to your ``INSTALLED_APPS``:
 
 .. code-block:: python
 
@@ -40,7 +40,7 @@ Add it to your `INSTALLED_APPS`:
     )
 
 
-To generate localizations, create a `strings.stew` file and then run
+To generate localizations, create a ``strings.stew`` file and then run
 
 .. code-block:: bash
 
@@ -57,8 +57,8 @@ The main feature of this thing is the aggregation of all your translations into
 a single text file. I find it significantly easier to keep all the translations
 of one string in one place.
 
-The new localization files are the `*.stew` files. You can have as many of
-those as you wish, and you should keep them in your `locale` folders for your
+The new localization files are the ``*.stew`` files. You can have as many of
+those as you wish, and you should keep them in your ``locale`` folders for your
 applications. All the \*.stew files will be picked up and transformed into \*.po
 files. Then those will be transformed into \*.mo files used by django.
 
@@ -66,15 +66,17 @@ Please, note that you should not modify the \*.po files manually as the changes
 will be overwritten when you generate localizations the next time. That is
 a common approach for all generated files.
 
-For the file format, please, refer to the documentation of the `stew` library.
+For the file format, please, refer to the documentation of the ``stew`` library.
 
 The two approaches to localization
 ++++++++++++++++++++++++++++++++++
 
 Django takes a very distinct approach to localizing strings. With this approach,
-you should write your text inside your `trans` tags or in your `gettext`
+you should write your text inside your ``trans`` tags or in your ``gettext``
 function in such a way that it will be usable text even if there is no translation
-for it::
+for it:
+
+.. code-block:: python
 
     prize = _('a car')
     print(_('You win %(prize)s') % {'prize': prize})
@@ -106,7 +108,9 @@ Which translates into the following bit in the Russian po file::
     msgstr[2] "%(n_foxes)s лис перепрыгивают собаку №%(dog_number)s"
     msgstr[3] "%(n_foxes)s лис перепрыгивают собаку №%(dog_number)s"
 
-If we want to process this in python code::
+If we want to process this in python code:
+
+.. code-block:: python
 
     from django.utils import translation
     from django.utils.translation import ngettext
@@ -183,8 +187,10 @@ The resulting .po file (Russian)::
     msgstr[2] "{} лис перепрыгивают собаку №{dog_number}"
     msgstr[3] "{} лис перепрыгивают собаку №{dog_number}"
 
-To make this approach easier, I wrote a replacement for gettext and the trans
-tag, `translate`::
+To make this approach easier, I wrote a replacement for ``gettext`` and the
+``trans`` tag, ``translate``:
+
+.. code-block:: python
 
     from django_localizer import translate
 
@@ -198,11 +204,11 @@ Template code::
     {% load translate %}
     {% translate 'fox_jumps_dog' n_foxes dog_number=dog_number %}
 
-The `translate` function
+The ``translate`` function
 ++++++++++++++++++++++++
 Proper documentation will follow.
 
-The signature is `translate(key, *args, **kwargs)`
+The signature is ``translate(key, *args, **kwargs)``
 
 Key is the translation key that should be found in the translation files.
 
@@ -210,18 +216,18 @@ The next thing the function needs to know is whether the form should be plural
 or singular. For that it must now the number. It looks for that number in the
 following order:
 
-1. The first `*args` argument if args are present;
-#. The value of the first item in the `**kwargs` if kwargs has length 1
-#. If kwargs are longer than 1, the value for the `n` key in kwargs if any
+1. The first ``*args`` argument if args are present;
+#. The value of the first item in the ``**kwargs`` if kwargs has length 1
+#. If kwargs are longer than 1, the value for the ``n`` key in kwargs if any
 
 If the number could not be determined in that way, the key is deemed not to
-have a plural form and will be looked for using `gettext`. Otherwise `ngettext`
-will be used. However, if `gettext` returns a value which is identical to the
-key, `ngettext` will be used to search further.
+have a plural form and will be looked for using ``gettext``. Otherwise ``ngettext``
+will be used. However, if ``gettext`` returns a value which is identical to the
+key, ``ngettext`` will be used to search further.
 
 The string template found in this way will be populated with the parameters
 passed in args and kwargs. The 'new-style' formatting is used (that is,
-`str.format()`), thus you should use `{}` for placeholders in your string
+``str.format()``), thus you should use ``{}`` for placeholders in your string
 templates.
 
 This allows several approaches to placeholders in your strings:
@@ -230,36 +236,63 @@ This allows several approaches to placeholders in your strings:
 
     en[1] = {} quick brown foxes jump over lazy dog #{dog_number}
 
-With this approach you can call the `translate` function with the number
-of foxes in `args`::
+With this approach you can call the ``translate`` function with the number
+of foxes in ``args``:
+
+.. code-block:: python
 
     translate('fox_jumps_dog', 4, dog_number=3)
 
-The `4` will be treated as the number of foxes.
+The ``4`` will be treated as the number of foxes.
 
 If you want to use that number in several locations, you can use numbered
 placeholders::
 
     en[1] = {0} quick brown foxes jump over lazy dog #{dog_number}. {0} is too many
 
-2. Use the `n` parameter in the dictionary::
+2. Use the ``n`` parameter in the dictionary::
 
     en[1] = {n} quick brown foxes jump over lazy dog #{dog_number}. {n} is too many
 
-python::
+.. code-block:: python
 
     translate('fox_jumps_dog', n=4, dog_number=3)
 
-3. Use any key in the `kwargs` as long as it is the only key there::
+3. Use any key in the ``kwargs`` as long as it is the only key there::
 
     en[1] = {n_foxes} quick brown foxes jump over lazy dog.
 
-python::
+.. code-block:: python
 
     translate('fox_jumps_dog', n_foxes=4)
 
-The `translate` templatetag is a wrapper around this `translate` function and
+The ``translate`` templatetag is a wrapper around this ``translate`` function and
 has all the same properties.
+
+Stew files
+++++++++++
+
+You can have as many stew files as you want. Naming does not matter as long as
+the extension is ``.stew``. Django Localizer will look for them in the
+``LOCALE_DIRS`` folder **and** in your apps' ``locale`` folders, in both cases
+recursively. So you can have separate stew files for strings with different
+intent, e.g. separate files for country names, error messages, push
+notifications, etc. The strings from all those stew files will be merged into
+the same ``.po`` files in the same locale dir (e.g. inside your application),
+and special comments will be added with the path to the ``.stew`` files. The
+sections from the ``.stew`` files are also preserved as comments::
+
+    ### from my_app/locale/strings.stew
+
+    # [[car]]
+    msgid "A car"
+    msgid_plural "{num} cars"
+    msgstr[0] "Ein Auto"
+    msgstr[1] "{num} Autos"
+
+
+    ### from my_app/locale/counties.stew
+    ...
 
 Credits
 -------
