@@ -14,10 +14,7 @@ def _get_n(*args, **kwargs):
 def _get_str(key, n):
     if n is None:
         return gettext(key)
-    s = gettext(key)
-    if s == key:
-        return ngettext(key, key, n)
-    return s
+    return ngettext(key, key, n)
 
 
 def translate(key, *args, **kwargs):

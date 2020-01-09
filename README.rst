@@ -222,8 +222,7 @@ following order:
 
 If the number could not be determined in that way, the key is deemed not to
 have a plural form and will be looked for using ``gettext``. Otherwise ``ngettext``
-will be used. However, if ``gettext`` returns a value which is identical to the
-key, ``ngettext`` will be used to search further.
+will be used.
 
 The string template found in this way will be populated with the parameters
 passed in args and kwargs. The 'new-style' formatting is used (that is,

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django_localizer"
-version = "0.1.7"
+version = "0.1.8"
 description = "A library for making localizing django apps easier"
 authors = ["Timofey Danshin <t.danshin@gmail.com>"]
 
