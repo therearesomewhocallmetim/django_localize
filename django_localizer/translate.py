@@ -2,12 +2,15 @@ from django.utils.translation import gettext, ngettext
 
 
 def _get_n(*args, **kwargs):
+    n = None
     if args:
-        return args[0]
+        n = args[0]
     elif kwargs and len(kwargs) == 1:
-        return list(kwargs.items())[0][1]
+        n = list(kwargs.items())[0][1]
     elif kwargs and 'n' in kwargs:
-        return kwargs['n']
+        n = kwargs['n']
+    if isinstance(n, int):
+        return n
     return None
 
 

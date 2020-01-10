@@ -5,7 +5,7 @@ Credits
 Development Lead
 ----------------
 
-* Timofey <t.danshin@corp.mail.ru>
+* Timofey <t.danshin@gmail.com>
 
 Contributors
 ------------

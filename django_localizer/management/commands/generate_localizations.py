@@ -115,7 +115,7 @@ class LocalePathProcessor:
             if not path.exists(fpath):
                 self.warnings.append(
 f"""No localization directory exists for language: {lang}. Looking in:
-{fpath} 
+{fpath}
 
 Please, run
 
@@ -170,7 +170,7 @@ msgid
 msgstr
 ""
 "Project-Id-Version: PACKAGE VERSION\\n"
-"Report-Msgid-Bugs-To: dtv@maps.me\\n"
+"Report-Msgid-Bugs-To: \\n"
 "POT-Creation-Date: \\n"
 "PO-Revision-Date: \\n"
 "Last-Translator: \\n"
