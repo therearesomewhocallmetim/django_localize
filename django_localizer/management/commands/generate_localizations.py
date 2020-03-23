@@ -131,7 +131,7 @@ class Command(BaseCommand):
     help = 'Generate .po and .mo files from .stew files'
 
     def __init__(self):
-        super(BaseCommand, self).__init__()
+        super().__init__(self)
         self.locale_paths = list(map(Path, settings.LOCALE_PATHS))
         app_configs = apps.get_app_configs()
         base_dir = Path(settings.BASE_DIR)
